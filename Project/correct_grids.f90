@@ -3,11 +3,11 @@ implicit none
 
 !variable declaration
 integer, parameter :: Lx = 6000, Ly = 2000                 !domain in km
-integer, parameter :: Dx = 500, Dxm = Dx*1000                   !grid resolution 
+integer, parameter :: Dx = 125, Dxm = Dx*1000                   !grid resolution 
 real, parameter :: dT = 100                             !time step, 100 seconds
 integer, parameter :: ntime = 100			!time step as an integer because otherwise the do loop gets mad
 integer, parameter :: Nx = (Lx/Dx) + 3, Ny = (Ly/Dx) + 3        !create grid points for array
-integer :: i, j, t, n                !define other potentially important variables
+integer :: i, j, t, n, irec                !define other potentially important variables
 real :: time                                            !TIME
 
 real, dimension(Nx, Ny) :: h, u, v, q, hsurf, lq, zeta, ght, ken, pen   !array creation with internal variables for each point
@@ -79,11 +79,7 @@ end do
 
 us0(2:Nx-1,2:Ny-1,1)= hu0(2:Nx-1,2:Ny-1,1)*u(2:Nx-1,2:Ny-1)
 vs0(2:Nx-1,2:Ny-1,1)= hv0(2:Nx-1,2:Ny-1,1)*v(2:Nx-1,2:Ny-1)
-
-us0(1,:,1) = us0(Nx-1,:,1)
-us0(Nx,:,1) = us0(2,:,1)  
-vs0(1,:,1) = vs0(Nx-1,:,1)
-vs0(Nx,:,1) = vs0(2,:,1)      
+      
 
 u(1,:) = u(Nx-1,:)
 u(Nx,:) = u(2,:)
@@ -135,74 +131,35 @@ do n = 2, 3
 			
 			! Calculate zeta (z0)
 			z0(i,j,n) = (u0(i,j-1,n) - u0(i,j,n) + v0(i,j,n) - v0(i-1,j,n)) / Dxm
-
-		end do
-	end do
-	
-	h0(1,:,n) = h0(Nx-1,:,n) 
-	h0(Nx,:,n) = h0(2,:,n)
-
-	u0(1,:,n) = u0(Nx-1,:,n)
-    	u0(Nx,:,n) = u0(2,:,n)
-
-	v0(1,:,n) = v0(Nx-1,:,n)
-    	v0(Nx,:,n) = v0(2,:,n)
-    
-    	z0(1,:,n) = z0(Nx-1,:,n) 
-	z0(Nx,:,n) = z0(2,:,n) 
-	
-	do i = 2, Nx-1
-		do j = 2, Ny-1
-		    ! hu0, hv0, and hq0 
-			hu0(i,j,n) = (h0(i-1,j,n) + h0(i+1,j,n)) / 2.0
-                        hv0(i,j,n) = (h0(i,j-1,n) + h0(i,j+1,n)) / 2.0
-                        hq0(i,j,n)=(h0(i,j,n) + h0(i-1,j,n) + h0(i-1,j-1,n) + h0(i,j-1,n)) / 4.0
+			
+			! hu0, hv0, and hq0 
+			hu0(i,j,n) = (h0(i-1,j,n) + h0(i+1,j,n))/2.0
+                        hv0(i,j,n) = (h0(i,j-1,n) + h0(i,j+1,n))/2.0
+                        hq0(i,j,n)=(h0(i,j,n) + h0(i-1,j,n) + h0(i-1,j-1,n) + h0(i,j-1,n))/4.0
 
 			! Calculate Potential Vorticity
 			q0(i,j,n) = (f + z0(i,j,n)) / hq0(i,j,n)
 
-			! Update everything else
-        		ght0(i,j,n) = g*(hsurf(i,j) + h0(i,j,n))
-        		ken0(i,j,n)=(u0(i,j,n)**2 + u0(i+1,j,n)**2 + v0(i,j,n)**2 + v0(i,j+1,n)**2)/4.
-		end do
-	end do 
-	
-	hu0(1,:,n) = hu0(Nx-1,:,n)
-	hu0(Nx,:,n) = hu0(2,:,n)
-
-	hv0(1,:,n) = hv0(Nx-1,:,n)
-	hv0(Nx,:,n) = hv0(2,:,n)
-
-	hq0(1,:,n) = hq0(Nx-1,:,n) 
-	hq0(Nx,:,n) = hq0(2,:,n) 
-
-	ght0(1,:,n) = ght0(Nx-1,:,n) 
-	ght0(Nx,:,n) = ght0(2,:,n)
-
-	q0(1,:,n) = q0(Nx-1,:,n) 
-	q0(Nx,:,n) = q0(2,:,n) 
-	
-	do i = 2, Nx-1
-		do j = 2, Ny-1
-		    ! Compute Greek letters
+			! Compute Greek letters
                         alp0(i, j, n) = ((1.0/24.0)*(2*q0(i+1,j+1,n) + q0(i,j+1,n) + 2*q0(i,j,n) + q0(i+1,j,n)))
                         bet0(i, j, n) = ((1.0/24.0)*(q0(i,j+1,n) + 2*q0(i-1,j+1,n) + q0(i-1,j,n) + 2*q0(i,j,n)))
                         gam0(i, j, n) = ((1.0/24.0)*(2*q0(i,j+1,n) + q0(i-1,j+1,n) + 2*q0(i-1,j,n) + q0(i,j,n)))
                         del0(i, j, n) = ((1.0/24.0)*(q0(i+1,j+1,n) + 2*q0(i,j+1,n) + q0(i,j,n) + 2*q0(i+1,j,n)))
                         eps0(i, j, n) = ((1.0/24.0)*(q0(i+1,j+1,n) + q0(i,j+1,n) - q0(i,j,n) - q0(i+1,j,n)))
                         phi0(i, j, n) = ((1.0/24.0)*(-q0(i+1,j+1,n) + q0(i,j+1,n) + q0(i,j,n) - q0(i+1,j,n)))
+
+			! Update everything else
+        		ght0(i,j,n) = g*(hsurf(i,j) + h0(i,j,n))
+        		ken0(i,j,n)=(u0(i,j,n)**2 + u0(i+1,j,n)**2 + v0(i,j,n)**2 + v0(i,j+1,n)**2)/4.
+	  
 		end do
-	end do 
+	end do
 
 	totalen0(:,:,n) = ken0(:,:,n) + ght0(:,:,n)	
 
 	us0(2:Nx-1,2:Ny-1,n)= hu0(2:Nx-1,2:Ny-1,n)*u0(2:Nx-1,2:Ny-1,n)
 	vs0(2:Nx-1,2:Ny-1,n)= hv0(2:Nx-1,2:Ny-1,n)*v0(2:Nx-1,2:Ny-1,n)
 
-	us0(1,:,n) = us0(Nx-1,:,n)
-        us0(Nx,:,n) = us0(2,:,n)
-        vs0(1,:,n) = vs0(Nx-1,:,n)
-        vs0(Nx,:,n) = vs0(2,:,n)
 
 	alp0(1,:,n) = alp0(Nx-1,:,n)
 	alp0(Nx,:,n) = alp0(2,:,n)
@@ -216,6 +173,33 @@ do n = 2, 3
 	eps0(Nx,:,n) = eps0(2,:,n)
 	phi0(1,:,n) = phi0(Nx-1,:,n)
 	phi0(Nx,:,n) = phi0(2,:,n)
+
+	hu0(1,:,n) = hu0(Nx-1,:,n)
+	hu0(Nx,:,n) = hu0(2,:,n)
+
+	hv0(1,:,n) = hv0(Nx-1,:,n)
+	hv0(Nx,:,n) = hv0(2,:,n)
+
+	z0(1,:,n) = z0(Nx-1,:,n) 
+	z0(Nx,:,n) = z0(2,:,n) 
+
+	hq0(1,:,n) = hq0(Nx-1,:,n) 
+	hq0(Nx,:,n) = hq0(2,:,n) 
+
+	ght0(1,:,n) = ght0(Nx-1,:,n) 
+	ght0(Nx,:,n) = ght0(2,:,n)
+
+	q0(1,:,n) = q0(Nx-1,:,n) 
+	q0(Nx,:,n) = q0(2,:,n) 
+
+	h0(1,:,n) = h0(Nx-1,:,n) 
+	h0(Nx,:,n) = h0(2,:,n)
+
+	u0(1,:,n) = u0(Nx-1,:,n)
+        u0(Nx,:,n) = u0(2,:,n)
+
+	v0(1,:,n) = v0(Nx-1,:,n)
+        v0(Nx,:,n) = v0(2,:,n)
  
 
 end do ! time loop
@@ -342,9 +326,35 @@ totalen2(:,:) = ken2(:,:) + ght2(:,:)
 totalen3(:,:) = ken3(:,:) + ght3(:,:)
 
 ! We probably have to print something or write something here
+open(unit=10, file='hightopo.dat', access='direct', form='unformatted', status='unknown', action='write', recl=4*(Nx-2)*(Ny-2))  !scary thing
+write(10, rec=1) hsurf(2:Nx-1,2:Ny-1)
 
-! open(unit=10, file='topo.dat', access='direct', form='unformatted', status='unknown', action='write', recl=4*Nx*Ny)  !scary thing
-! write(10, rec=1) hsurf
+open(unit=15, file='highgeopot.dat', access='direct', form='unformatted', status='unknown', action='write', recl=4*(Nx-2)*(Ny-2))
+irec=0
+do n=1,3
+        irec=irec+1
+        write(15, rec=irec) ght0(2:Nx-1,2:Ny-1,n)
+end do
+
+open(unit=20, file='highuwind.dat', access='direct', form='unformatted', status='unknown', action='write', recl=4*(Nx-2)*(Ny-2))
+irec=0
+do n=1,3
+        irec=irec+1
+        write(20, rec=irec) u0(2:Nx-1,2:Ny-1,n)
+end do
+
+open(unit=25, file='highvwind.dat', access='direct', form='unformatted', status='unknown', action='write', recl=4*(Nx-2)*(Ny-2))
+irec=0
+do n=1,3
+        irec=irec+1
+        write(25, rec=irec) v0(2:Nx-1,2:Ny-1,n)
+end do
+
+open(unit=30, file='highuwindAB.dat', access='direct', form='unformatted', status='unknown', action='write', recl=4*(Nx-2)*(Ny-2))  !scary thing
+write(30, rec=1) u(2:Nx-1,2:Ny-1)
+
+open(unit=35, file='highvwindAB.dat', access='direct', form='unformatted', status='unknown', action='write', recl=4*(Nx-2)*(Ny-2))  !scary thing
+write(35, rec=1) v(2:Nx-1,2:Ny-1)
 
 
 end program lowresmodel
@@ -374,5 +384,3 @@ subroutine initgrid(hsurf, Dx, Nx, Ny)	!creates grid, ridge, and topography.
     endif
 	
 end subroutine initgrid
-
-
